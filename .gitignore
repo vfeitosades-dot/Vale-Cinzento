@@ -1,0 +1,9 @@
+.godot/
+.export/
+export_credentials.cfg
+*.keystore
+*.jks
+*.exe
+*.apk
+*.pck
+.DS_Store

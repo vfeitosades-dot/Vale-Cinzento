@@ -1,0 +1,44 @@
+name: Testar o APK publicado no Android
+on:
+  workflow_run:
+    workflows: ["Compilar e publicar Vale Cinzento"]
+    branches: [main]
+    types: [completed]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: android-teste-${{ github.event.workflow_run.head_sha || github.sha }}
+  cancel-in-progress: false
+jobs:
+  celular:
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          persist-credentials: false
+      - name: Obter o instalador e validar o SHA-256 da release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="$(head -n1 publicacao.txt | tr -d '\r')"
+          [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-z0-9.]+)?$ ]]
+          mkdir -p "$RUNNER_TEMP/vale-release"
+          gh release download "$tag" --repo "$GITHUB_REPOSITORY" --dir "$RUNNER_TEMP/vale-release" --pattern 'Vale-Cinzento-Android-arm64.apk' --pattern 'SHA256SUMS.txt'
+          cd "$RUNNER_TEMP/vale-release"
+          grep -E '^[a-f0-9]{64}  Vale-Cinzento-Android-arm64\.apk$' SHA256SUMS.txt > APK.sha256
+          sha256sum -c APK.sha256
+      - name: Abrir o jogo, iniciar por toque, caminhar e consultar o mapa
+        run: bash ci/test_android.sh "$RUNNER_TEMP/vale-release/Vale-Cinzento-Android-arm64.apk"
+      - name: Guardar as capturas e os registros do Android
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: teste-android
+          path: evidencias/
+          if-no-files-found: ignore
+          retention-days: 5

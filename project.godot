@@ -1,0 +1,30 @@
+config_version=5
+
+[application]
+config/name="Vale Cinzento"
+config/description="Travessia do Vale — exploração e sobrevivência offline."
+config/version="0.1.0"
+config/features=PackedStringArray("4.4", "GL Compatibility")
+run/main_scene="res://Main.tscn"
+config/icon="res://icon.svg"
+config/quit_on_go_back=false
+boot_splash/show_image=false
+boot_splash/bg_color=Color(0.08, 0.10, 0.09, 1)
+run/max_fps=60
+
+[display]
+window/size/viewport_width=1152
+window/size/viewport_height=648
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation=0
+
+[input_devices]
+pointing/emulate_mouse_from_touch=true
+pointing/emulate_touch_from_mouse=false
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true
+lights_and_shadows/directional_shadow/size=1024

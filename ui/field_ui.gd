@@ -39,7 +39,6 @@ var scroller: ScrollContainer
 var last_list := ""
 var map_view
 var native_touch := false
-var in_title_help := false
 var modal_title: Label
 
 func _ready() -> void:
@@ -233,7 +232,8 @@ func _make_hud() -> void:
 	_button(bar,"Pausa",_open.bind("pause"),false,true)
 	action_btn = _button(hud,"Interagir",_emit.bind("interact",""),true,true)
 	_place(action_btn,Rect2(1,1,0,0),Vector4(-252,-127,-20,-74))
-	touch.blocked_controls = [bar,action_btn] as Array[Control]
+	touch.blocked_controls.append(bar)
+	touch.blocked_controls.append(action_btn)
 
 func _make_toast() -> void:
 	toast_box = _panel(surface,DEEP,12)
@@ -274,6 +274,7 @@ func show_title(has_save: bool) -> void:
 		return
 	has_campaign = has_save
 	mode = "title"
+	print("VALE_UI_TITULO")
 	_clear_modal()
 	touch.active = false
 	touch.reset()
@@ -284,6 +285,7 @@ func show_title(has_save: bool) -> void:
 
 func show_game() -> void:
 	mode = "game"
+	print("VALE_UI_JOGO")
 	_clear_modal()
 	title_layer.hide()
 	hud.show()

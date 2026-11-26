@@ -1,0 +1,104 @@
+name: Compilar Windows x64
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/windows-exe.yml'
+      - 'gameplay/**'
+      - 'world/**'
+      - 'ui/**'
+      - 'project.godot'
+      - 'Main.tscn'
+      - 'export_presets.cfg'
+permissions:
+  contents: read
+concurrency:
+  group: vale-windows
+  cancel-in-progress: false
+jobs:
+  exportar:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar Godot 4.4.1 e templates oficiais
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          base=https://github.com/godotengine/godot-builds/releases/download/4.4.1-stable
+          for f in Godot_v4.4.1-stable_linux.x86_64.zip Godot_v4.4.1-stable_export_templates.tpz SHA512-SUMS.txt; do
+            curl --retry 4 -fsSLo "$f" "$base/$f"
+          done
+          for f in Godot_v4.4.1-stable_linux.x86_64.zip Godot_v4.4.1-stable_export_templates.tpz; do
+            grep -F "$f" SHA512-SUMS.txt | sha512sum -c -
+          done
+          unzip -q Godot_v4.4.1-stable_linux.x86_64.zip
+          sudo install Godot_v4.4.1-stable_linux.x86_64 /usr/local/bin/godot
+          templates="$HOME/.local/share/godot/export_templates/4.4.1.stable"
+          mkdir -p "$templates"
+          unzip -jq Godot_v4.4.1-stable_export_templates.tpz 'templates/windows_release_x86_64.exe' 'templates/windows_debug_x86_64.exe' 'templates/version.txt' -d "$templates"
+          godot --version
+      - name: Importar e verificar a campanha
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --editor --import 2>&1 | tee "$RUNNER_TEMP/import.log"
+          if grep -E 'SCRIPT ERROR|Parse Error|Failed to load script' "$RUNNER_TEMP/import.log"; then exit 1; fi
+          timeout 100s godot --headless -- --verificar-travessia 2>&1 | tee "$RUNNER_TEMP/game.log"
+          grep -q TRAVESSIA_OK "$RUNNER_TEMP/game.log"
+          if grep -E 'SCRIPT ERROR|Parse Error|ERROR:' "$RUNNER_TEMP/game.log"; then exit 1; fi
+      - name: Exportar EXE com PCK integrado
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/dist"
+          exe="$RUNNER_TEMP/dist/Vale-Cinzento-Windows-x64.exe"
+          godot --headless --export-release Windows "$exe" 2>&1 | tee "$RUNNER_TEMP/export.log"
+          if grep -E 'SCRIPT ERROR|Parse Error|ERROR:' "$RUNNER_TEMP/export.log"; then exit 1; fi
+          test -s "$exe"
+          file "$exe" | grep -F 'PE32+'
+          cd "$RUNNER_TEMP/dist"
+          sha256sum *.exe > SHA256SUMS-Windows.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Vale-Cinzento-Windows-x64
+          path: ${{ runner.temp }}/dist/
+          if-no-files-found: error
+  testar-publicar:
+    needs: exportar
+    runs-on: windows-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Vale-Cinzento-Windows-x64
+          path: dist
+      - name: Testar o executável real no Windows
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $log = Join-Path $env:RUNNER_TEMP vale.log
+          $file = Resolve-Path dist/Vale-Cinzento-Windows-x64.exe
+          $p = Start-Process -FilePath $file -ArgumentList @('--headless','--log-file', ('"' + $log + '"'),'--','--verificar-travessia') -WindowStyle Hidden -PassThru
+          if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'Tempo de inicialização excedido' }
+          $lines = Get-Content -Raw $log
+          Write-Output $lines
+          if ($p.ExitCode -ne 0 -or $lines -notmatch 'TRAVESSIA_OK' -or $lines -match 'SCRIPT ERROR|Parse Error|ERROR:') { throw 'Falha no teste do executável' }
+      - name: Publicar EXE verificado no GitHub Releases
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="$(head -n1 publicacao.txt | tr -d '\r')"
+          [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-z0-9.]+)?$ ]]
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" dist/Vale-Cinzento-Windows-x64.exe dist/SHA256SUMS-Windows.txt --clobber
+          else
+            gh release create "$tag" --target "$GITHUB_SHA" --title "Vale Cinzento · $tag" --notes "Exportação Windows x64, testada no Windows." dist/Vale-Cinzento-Windows-x64.exe dist/SHA256SUMS-Windows.txt
+          fi

@@ -1,0 +1,74 @@
+name: Compilar e publicar Vale Cinzento
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['publicacao.txt']
+permissions:
+  contents: read
+concurrency:
+  group: publicacao-vale
+  cancel-in-progress: false
+jobs:
+  exportar:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Preparar Godot e ferramentas Android
+        run: bash ci/setup.sh
+      - name: Verificar o jogo e exportar
+        env:
+          ANDROID_SIGNING_STORE: ${{ secrets.ANDROID_SIGNING_STORE }}
+          ANDROID_SIGNING_ALIAS: ${{ secrets.ANDROID_SIGNING_ALIAS }}
+          ANDROID_SIGNING_PASSWORD: ${{ secrets.ANDROID_SIGNING_PASSWORD }}
+        run: bash ci/build.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pacotes
+          path: dist/
+          if-no-files-found: error
+          retention-days: 2
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    needs: exportar
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: pacotes
+          path: dist
+      - name: Iniciar o EXE e executar a travessia de teste
+        shell: pwsh
+        run: |
+          $log = Join-Path $env:RUNNER_TEMP vale.log
+          $file = Resolve-Path dist/Vale-Cinzento-Windows-x64.exe
+          $p = Start-Process -FilePath $file -ArgumentList @('--headless','--log-file', $log,'--','--verificar-travessia') -WindowStyle Hidden -PassThru
+          if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'Tempo de inicialização excedido' }
+          $lines = Get-Content -Raw $log
+          Write-Output $lines
+          if ($p.ExitCode -ne 0 -or $lines -notmatch 'TRAVESSIA_OK' -or $lines -match 'SCRIPT ERROR|Parse Error') { throw 'Falha no teste do executável' }
+  publicar:
+    runs-on: ubuntu-24.04
+    needs: [exportar, windows]
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: pacotes
+          path: dist
+      - name: Criar release com binários verificados
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="$(head -n1 publicacao.txt | tr -d '\r')"
+          [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-z0-9.]+)?$ ]]
+          (cd dist && sha256sum -c SHA256SUMS.txt)
+          gh release create "$tag" --target "$GITHUB_SHA" --title "Vale Cinzento · Travessia do Vale · $tag" --notes-file ci/notas.md dist/*

@@ -4,6 +4,11 @@ const FILE := "user://travessia.json"
 const BAK := "user://travessia.bak"
 const TMP := "user://travessia.tmp"
 
+static func _path(path: String) -> String:
+	if "--verificar-travessia" in OS.get_cmdline_user_args():
+		return path.replace("user://","user://teste-")
+	return path
+
 static func valid(v: Variant) -> bool:
 	if not v is Dictionary or v.get("version") != 1:
 		return false
@@ -16,6 +21,7 @@ static func valid(v: Variant) -> bool:
 	return v.get("journal") is Array
 
 static func read_one(path: String) -> Dictionary:
+	path = _path(path)
 	if not FileAccess.file_exists(path):
 		return {}
 	var file := FileAccess.open(path, FileAccess.READ)
@@ -34,7 +40,7 @@ static func load_campaign() -> Dictionary:
 static func write_campaign(data: Dictionary) -> bool:
 	if not valid(data):
 		return false
-	var file := FileAccess.open(TMP, FileAccess.WRITE)
+	var file := FileAccess.open(_path(TMP), FileAccess.WRITE)
 	if file == null:
 		return false
 	file.store_string(JSON.stringify(data))
@@ -45,8 +51,8 @@ static func write_campaign(data: Dictionary) -> bool:
 	var dir := DirAccess.open("user://")
 	if dir == null:
 		return false
-	if not read_one(FILE).is_empty() and dir.copy(FILE, BAK) != OK:
+	if not read_one(FILE).is_empty() and dir.copy(_path(FILE), _path(BAK)) != OK:
 		return false
-	if dir.file_exists(FILE) and dir.remove(FILE) != OK:
+	if dir.file_exists(_path(FILE)) and dir.remove(_path(FILE)) != OK:
 		return false
-	return dir.rename(TMP, FILE) == OK
+	return dir.rename(_path(TMP), _path(FILE)) == OK

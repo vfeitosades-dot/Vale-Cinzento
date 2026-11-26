@@ -421,7 +421,7 @@ func _populate() -> void:
 		"help":
 			_label(content,"TECLADO E MOUSE",14,SUN)
 			_entry("W A S D  ou  setas","Caminhar ou conduzir. Shift para correr a pé.")
-			_entry("Arrastar o mouse","Girar a câmera em volta do personagem.")
+			_entry("Arrastar com o botão direito do mouse","Girar a câmera em volta do personagem.")
 			_entry("E  ·  I  ·  C  ·  M  ·  J","Interagir, abrir mochila, fabricação, mapa e diário. Esc pausa ou fecha o caderno.")
 			_label(content,"TELA DE TOQUE",14,SUN)
 			_entry("Esquerda para andar · direita para olhar","Arraste no lado esquerdo. Estenda o movimento para correr. Deslize no lado direito para girar a câmera.")

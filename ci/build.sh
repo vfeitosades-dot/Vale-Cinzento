@@ -23,6 +23,17 @@ godot --headless --editor --import 2>&1 | tee "$RUNNER_TEMP/import.log"
 timeout 100s godot --headless -- --verificar-travessia 2>&1 | tee "$RUNNER_TEMP/game.log"
 grep -q TRAVESSIA_OK "$RUNNER_TEMP/game.log"
 ! grep -E 'SCRIPT ERROR|Parse Error|ERROR:' "$RUNNER_TEMP/game.log" || exit 1
+if ! command -v xvfb-run >/dev/null || ! command -v xauth >/dev/null; then
+  sudo apt-get -qq update
+  sudo apt-get -y install xvfb xauth libgl1-mesa-dri
+fi
+VALE_CAPTURA="$out/Travessia.png" LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe \
+  timeout 120s xvfb-run -a -s "-screen 0 1366x768x24" godot --display-driver x11 \
+  --rendering-method gl_compatibility --rendering-driver opengl3 --audio-driver Dummy \
+  --resolution 1152x648 -- --capturar-vale 2>&1 | tee "$RUNNER_TEMP/captura.log"
+! grep -E 'SCRIPT ERROR|Parse Error' "$RUNNER_TEMP/captura.log" || exit 1
+file "$out/Travessia.png" | grep -F 'PNG image data, 1152 x 648'
+test "$(stat -c '%s' "$out/Travessia.png")" -gt 5000
 godot --headless --export-release Windows "$out/Vale-Cinzento-Windows-x64.exe"
 godot --headless --export-release Android "$out/Vale-Cinzento-Android-arm64.apk"
 sdk="$ANDROID_HOME/build-tools/34.0.0"
@@ -34,5 +45,5 @@ grep -F 'launchable-activity:' "$RUNNER_TEMP/apk.txt"
 if grep -Fq 'android.permission.INTERNET' "$RUNNER_TEMP/apk.txt"; then echo 'Permissão de rede inesperada'; exit 1; fi
 file "$out/Vale-Cinzento-Windows-x64.exe" | grep -F 'PE32+'
 mkdir -p dist
-cp "$out/Vale-Cinzento-Windows-x64.exe" "$out/Vale-Cinzento-Android-arm64.apk" dist/
+cp "$out/Vale-Cinzento-Windows-x64.exe" "$out/Vale-Cinzento-Android-arm64.apk" "$out/Travessia.png" dist/
 (cd dist && sha256sum *.exe *.apk > SHA256SUMS.txt)

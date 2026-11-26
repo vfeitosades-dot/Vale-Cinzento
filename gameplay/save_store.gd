@@ -28,7 +28,18 @@ static func read_one(path: String) -> Dictionary:
 	if file == null:
 		return {}
 	var value: Variant = JSON.parse_string(file.get_as_text())
-	return value if valid(value) else {}
+	if not valid(value):
+		return {}
+	# JSON decodes all numbers as floats; restore integer game-state fields.
+	var data: Dictionary = value
+	data["version"] = int(data["version"])
+	data["seed"] = int(data["seed"])
+	data["water"] = int(data["water"])
+	for section in ["inventory", "daily"]:
+		var entries: Dictionary = data[section]
+		for key in entries:
+			entries[key] = int(entries[key])
+	return data
 
 static func load_campaign() -> Dictionary:
 	for path in [FILE, BAK]:

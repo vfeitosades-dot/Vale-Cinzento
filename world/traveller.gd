@@ -26,6 +26,9 @@ var limb_weight := 0.0
 var next_step := PI
 var orbit_delay := 0.0
 var headlamp := false
+var fatigue := false
+var covered_seats := false
+var cover_model: Node3D
 
 var hiker := Node3D.new()
 var car := Node3D.new()
@@ -44,6 +47,8 @@ func _ready() -> void:
 	var art := Art.new()
 	hiker_parts = art.build_hiker(hiker)
 	wheels = art.build_car(car)
+	cover_model = art.build_seat_cover(car)
+	cover_model.visible = covered_seats
 	lens.name = "CameraOrbital"
 	lens.fov = 64
 	lens.near = 0.08
@@ -86,6 +91,14 @@ func set_touch_move(axis: Vector2) -> void:
 
 func set_sprinting(on: bool) -> void:
 	touch_sprint = on and active
+
+func set_seat_cover(on: bool) -> void:
+	covered_seats = on
+	if is_instance_valid(cover_model):
+		cover_model.visible = on
+
+func set_tired(on: bool) -> void:
+	fatigue = on
 
 func is_driving() -> bool:
 	return driving
@@ -137,7 +150,8 @@ func _can_walk(point: Vector2) -> bool:
 	return along > 2.16+WALK_RADIUS or across > 0.86+WALK_RADIUS
 
 func _walk(delta: float, axis: Vector2) -> void:
-	var speed := 6.8 if (touch_sprint or Input.is_key_pressed(KEY_SHIFT)) else 3.9
+	var sprinting := not fatigue and (touch_sprint or Input.is_key_pressed(KEY_SHIFT))
+	var speed := 6.8 if sprinting else 3.9
 	var wish := _side(orbit) * axis.x - _forward(orbit) * axis.y
 	var motion := wish * speed * delta
 	var old := walk_point
@@ -317,7 +331,7 @@ func toggle_vehicle() -> bool:
 func get_player_state() -> Dictionary:
 	return {"x":walk_point.x,"z":walk_point.y,"yaw":orbit,"pitch":elevation,
 		"facing":facing,"car_x":car_point.x,"car_z":car_point.y,
-		"car_yaw":car_yaw,"driving":driving,"lamp":headlamp}
+		"car_yaw":car_yaw,"driving":driving,"lamp":headlamp,"seats":covered_seats}
 
 func set_player_state(state: Dictionary) -> void:
 	var stored_car := Vector2(float(state.get("car_x",PARKING.x)),float(state.get("car_z",PARKING.y)))
@@ -335,6 +349,7 @@ func set_player_state(state: Dictionary) -> void:
 	moving_speed = 0
 	limb_weight = 0
 	headlamp = bool(state.get("lamp",false))
+	set_seat_cover(bool(state.get("seats",false)))
 	engine.stop()
 	if driving and active:
 		engine.play()

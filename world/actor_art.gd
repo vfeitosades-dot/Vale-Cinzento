@@ -178,12 +178,8 @@ func build_car(root: Node3D) -> Array:
 	car_section(-2.11,2.15,0.48,0.92,0.98,0.795,0.87,olive)
 	car_section(-2.09,-0.84,0.89,0.90,1.055,0.855,0.83,olive)
 	car_section(-0.87,1.92,0.94,1.02,1.05,0.858,0.816,olive)
-	# Open the windscreen profile from the hood to the roof rail.
-	panel(Vector3(-0.818,1.036,-0.875),Vector3(0.818,1.036,-0.875),Vector3(0.683,1.561,-0.43),Vector3(-0.683,1.561,-0.43),Vector3(0,0.65,-1),glass)
-	panel(Vector3(-0.817,1.033,1.962),Vector3(0.817,1.033,1.962),Vector3(0.683,1.556,1.776),Vector3(-0.683,1.556,1.776),Vector3(0,0.3,1),glass)
 	car_section(-0.46,1.81,1.549,1.615,1.60,0.707,0.687,roof)
 	for s in [-1.0,1.0]:
-		panel(Vector3(s*0.826,1.035,-0.871),Vector3(s*0.826,1.035,1.96),Vector3(s*0.686,1.552,1.773),Vector3(s*0.686,1.552,-0.43),Vector3(s,0.15,0),glass)
 		# Thin uprights incline with the glazing.
 		for line: Vector2 in [Vector2(-0.85,-0.43),Vector2(0.35,0.35),Vector2(1.19,1.19),Vector2(1.93,1.77)]:
 			panel(Vector3(s*0.835,1.03,line.x-0.038),Vector3(s*0.835,1.03,line.x+0.038),Vector3(s*0.694,1.554,line.y+0.038),Vector3(s*0.694,1.554,line.y-0.038),Vector3(s,0.15,0),roof)
@@ -207,7 +203,34 @@ func build_car(root: Node3D) -> Array:
 	car_section(0.38,1.29,1.76,1.92,1.91,0.309,0.257,palette("98744e"))
 	for z in [0.54,1.12]:
 		box(Vector3(0,1.932,z),Vector3(0.51,0.02,0.06),trim)
+	# Seat backs, headrests, dash and interior bench are visible through the glazing.
+	for s in [-1.0,1.0]:
+		box(Vector3(s*0.40,1.082,0.17),Vector3(0.55,0.107,0.49),trim)
+		box(Vector3(s*0.40,1.221,0.37),Vector3(0.55,0.315,0.105),trim)
+		box(Vector3(s*0.40,1.427,0.37),Vector3(0.25,0.13,0.099),trim)
+	box(Vector3(0,1.083,1.14),Vector3(1.32,0.10,0.42),trim)
+	box(Vector3(0,1.223,1.34),Vector3(1.31,0.31,0.105),trim)
+	box(Vector3(0,1.103,-0.56),Vector3(1.49,0.145,0.26),trim)
+	box(Vector3(-0.38,1.233,-0.32),Vector3(0.30,0.038,0.045),trim)
+	box(Vector3(-0.38,1.158,-0.30),Vector3(0.22,0.037,0.046),trim)
+	for s in [-1.0,1.0]:
+		box(Vector3(-0.38+s*0.12,1.196,-0.31),Vector3(0.047,0.087,0.044),trim)
 	finish(root)
+	begin_part()
+	panel(Vector3(-0.818,1.036,-0.875),Vector3(0.818,1.036,-0.875),Vector3(0.683,1.561,-0.43),Vector3(-0.683,1.561,-0.43),Vector3(0,0.65,-1),glass)
+	panel(Vector3(-0.817,1.033,1.962),Vector3(0.817,1.033,1.962),Vector3(0.683,1.556,1.776),Vector3(-0.683,1.556,1.776),Vector3(0,0.3,1),glass)
+	for s in [-1.0,1.0]:
+		panel(Vector3(s*0.826,1.035,-0.871),Vector3(s*0.826,1.035,1.96),Vector3(s*0.686,1.552,1.773),Vector3(s*0.686,1.552,-0.43),Vector3(s,0.15,0),glass)
+	var glazing := MeshInstance3D.new()
+	glazing.mesh = batch.commit()
+	var tint := StandardMaterial3D.new()
+	tint.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	tint.albedo_color = Color(0.40,0.55,0.57,0.27)
+	tint.roughness = 0.23
+	tint.cull_mode = BaseMaterial3D.CULL_DISABLED
+	glazing.material_override = tint
+	glazing.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(glazing)
 	for s in [-1.0,1.0]:
 		for z in [-1.35,1.37]:
 			var wheel := joint(root,"Roda",Vector3(s*0.81,0.374,z))
@@ -225,3 +248,18 @@ func build_car(root: Node3D) -> Array:
 
 func strap_color() -> Color:
 	return palette("505348")
+
+func build_seat_cover(root: Node3D) -> Node3D:
+	var covers := joint(root,"CapasArtesanais",Vector3.ZERO)
+	begin_part()
+	for s in [-1.0,1.0]:
+		var cx: float = s*0.40
+		box(Vector3(cx,1.232,0.368),Vector3(0.561,0.324,0.121),palette("b17e50"))
+		box(Vector3(cx,1.432,0.37),Vector3(0.266,0.139,0.112),palette("b17e50"))
+		box(Vector3(cx,1.143,0.164),Vector3(0.548,0.022,0.48),palette("b17e50"))
+		for dx in [-0.17,0.11]:
+			for dz in [-0.063,0.063]:
+				box(Vector3(cx+dx,1.232,0.368+dz),Vector3(0.042,0.307,0.008),palette("456960"))
+			box(Vector3(cx+dx,1.157,0.164),Vector3(0.042,0.009,0.48),palette("456960"))
+	finish(covers)
+	return covers

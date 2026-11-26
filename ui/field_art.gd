@@ -120,11 +120,13 @@ func _chart() -> void:
 	draw_polyline(river,Color("#93b1aa"),maxf(4.0,5*factor),true)
 	draw_polyline(river,Color("#b4c7bc"),1.5,true)
 	var path := PackedVector2Array()
-	for p in [Vector2(-30,42),Vector2(-8,39),Vector2(4,32),Vector2(14,15),Vector2(8,2),Vector2(-4,-16),Vector2(-6,-34),Vector2(16,-63)]:
+	for p in [Vector2(2,73),Vector2(4,33),Vector2(3,10),Vector2(-4,-8),Vector2(-4,-26),Vector2(-11,-36),Vector2(16,-63)]:
 		path.append(center+p*factor)
 	draw_polyline(path,Color("#b89e73"),4,true)
 	draw_polyline(path,Color("#ebe2c4"),1.4,true)
-	draw_line(center+Vector2(-6,-34)*factor,center+Vector2(-36,-52)*factor,Color("#b89e73"),2,true)
+	draw_line(center+Vector2(-11,-36)*factor,center+Vector2(-36,-52)*factor,Color("#b89e73"),2,true)
+	draw_line(center+Vector2(4,42)*factor,center+Vector2(-29,42)*factor,Color("#b89e73"),2,true)
+	draw_line(center+Vector2(3,15)*factor,center+Vector2(14,15)*factor,Color("#b89e73"),2,true)
 	var font := ThemeDB.fallback_font
 	for m in survey.get("markers",[]):
 		var p := center + Vector2(float(m.get("x",0)),float(m.get("z",0)))*factor
